@@ -15,7 +15,7 @@ services:
       - keycloak_network             # Attach to internal network
   # Keycloak Authentication Service
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1 # Official Keycloak image
+    image: quay.io/keycloak/keycloak:26.1.1 # Official Keycloak image
     container_name: keycloak         # Custom container name
     environment:
       # Database connection settings
