@@ -1,0 +1,53 @@
+services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:17.0            # Using latest PostgreSQL image
+    container_name: postgres        # Custom container name for easy identification
+    environment:
+      # Database configuration
+      POSTGRES_DB: ${POSTGRES_DB}          # Database name for Keycloak
+      POSTGRES_USER: ${POSTGRES_USER}      # Database superuser username
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Database superuser password
+    volumes:
+      # Persistent storage for database files
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - keycloak_network             # Attach to internal network
+  # Keycloak Authentication Service
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1 # Official Keycloak image
+    container_name: keycloak         # Custom container name
+    environment:
+      # Database connection settings
+      KC_DB: ${KC_DB}                     # Database type
+      KC_DB_URL: ${KC_DB_URL}             # JDBC connection URL
+      KC_DB_USERNAME: ${KC_DB_USERNAME}    # Must match POSTGRES_USER
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}    # Must match POSTGRES_PASSWORD
+      # Admin console credentials
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}    # Initial admin username
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD} # Initial admin password
+      WEBHOOK_URL: ${WEBHOOK_URL}
+    volumes:
+      # Mount directory for custom extensions (email domain validation)
+      - ./providers:/opt/keycloak/providers
+    ports:
+      # Expose Keycloak on port 8080
+      - "8080:8080"
+    depends_on:
+      # Ensure PostgreSQL starts first
+      - postgres
+    command:
+      - start-dev                   # Run in development mode
+    networks:
+      - keycloak_network           # Attach to internal network
+
+# Persistent volumes configuration
+volumes:
+  postgres_data:                   # Named volume for PostgreSQL data
+  pgadmin:                         # Named volume for pgAdmin data
+  # Uses default driver and configuration
+
+# Network configuration
+networks:
+  keycloak_network:               # Internal network for service communication
+    driver: bridge                # Using bridge network driver
