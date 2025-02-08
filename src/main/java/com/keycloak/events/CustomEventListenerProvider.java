@@ -37,10 +37,10 @@ public class CustomEventListenerProvider
         log.infof("onEvent-> %s", toString(event));
         event.getDetails().forEach((key, value) -> log.infof("%s : %s", key, value));
 
-        RealmModel realm = this.model.getRealm(event.getRealmId());
-        UserModel user = this.session.users().getUserById(realm, event.getUserId());
+
         if (EventType.REGISTER.equals(event.getType())) {
             log.info("User registered");
+            UserModel user = getUser(event.getUserId());
             sendCreateData(user);
         }
 
@@ -60,10 +60,10 @@ public class CustomEventListenerProvider
         log.infof("Operation type: %s", adminEvent.getOperationType());
         log.infof("AdminEvent.toString(): %s", toString(adminEvent));
 
-        RealmModel realm = this.model.getRealm(adminEvent.getRealmId());
-        UserModel user = this.session.users().getUserById(realm, adminEvent.getResourcePath().substring(6));
+
         if (ResourceType.USER.equals(adminEvent.getResourceType())
                 && OperationType.CREATE.equals(adminEvent.getOperationType())) {
+            UserModel user = getUser(adminEvent);
             sendCreateData(user);
         }
 
@@ -71,6 +71,17 @@ public class CustomEventListenerProvider
                 && OperationType.DELETE.equals(adminEvent.getOperationType())) {
             sendDeleteData(adminEvent.getResourcePath().substring(6));
         }
+    }
+
+
+    private UserModel getUser(String userId) {
+        RealmModel realm = this.model.getRealm(REALM_ID);
+        return this.session.users().getUserById(realm, userId);
+    }
+
+    private UserModel getUser(AdminEvent adminEvent) {
+        RealmModel realm = this.model.getRealm(adminEvent.getRealmId());
+        return this.session.users().getUserById(realm, adminEvent.getResourcePath().substring(6));
     }
 
 
