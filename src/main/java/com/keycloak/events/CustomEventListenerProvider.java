@@ -40,14 +40,13 @@ public class CustomEventListenerProvider
 
         if (EventType.REGISTER.equals(event.getType())) {
             log.info("User registered");
-            UserModel user = getUser(event.getUserId());
+            UserModel user = getUser(event);
             sendCreateData(user);
         }
 
         if(EventType.DELETE_ACCOUNT.equals(event.getType())) {
             log.info("User account deleted");
             sendDeleteData(event.getUserId());
-
         }
 
     }
@@ -74,14 +73,14 @@ public class CustomEventListenerProvider
     }
 
 
-    private UserModel getUser(String userId) {
-        RealmModel realm = this.model.getRealm(REALM_ID);
-        return this.session.users().getUserById(realm, userId);
+    private UserModel getUser(Event event) {
+        RealmModel realm = this.model.getRealm(event.getRealmId());
+       return  this.session.users().getUserById(realm, event.getUserId());
     }
 
-    private UserModel getUser(AdminEvent adminEvent) {
-        RealmModel realm = this.model.getRealm(adminEvent.getRealmId());
-        return this.session.users().getUserById(realm, adminEvent.getResourcePath().substring(6));
+    private UserModel getUser(AdminEvent event) {
+        RealmModel realm = this.model.getRealm(event.getRealmId());
+       return  this.session.users().getUserById(realm, event.getResourcePath().substring(6));
     }
 
 
