@@ -21,7 +21,6 @@ public class CustomEventListenerProvider
 
     private static final String REALM_ID = "2c10d8dd-e1b9-44f7-bcf7-334c7ef2c676";
 
-
     private final KeycloakSession session;
     private final RealmProvider model;
 
