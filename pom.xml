@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.esprit</groupId>
-    <artifactId>keycloak-sync-spi</artifactId>
+    <artifactId>sab-external-db-sync</artifactId>
     <version>1.0</version>
 
     <properties>

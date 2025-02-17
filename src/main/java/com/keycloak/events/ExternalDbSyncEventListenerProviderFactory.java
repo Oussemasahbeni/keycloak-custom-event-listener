@@ -6,12 +6,12 @@ import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 
-public class CustomEventListenerProviderFactory
+public class ExternalDbSyncEventListenerProviderFactory
         implements EventListenerProviderFactory {
 
   @Override
   public EventListenerProvider create(KeycloakSession keycloakSession) {
-    return new CustomEventListenerProvider(keycloakSession);
+    return new ExternalDbSyncEventListenerProvider(keycloakSession);
   }
 
   @Override
@@ -31,6 +31,6 @@ public class CustomEventListenerProviderFactory
 
   @Override
   public String getId() {
-    return "custom-event-listener";
+    return "external-db-sync";
   }
 }

@@ -14,24 +14,31 @@ import org.keycloak.models.UserModel;
 
 import java.util.StringJoiner;
 
-public class CustomEventListenerProvider
+public class ExternalDbSyncEventListenerProvider
         implements EventListenerProvider {
 
-    private static final Logger log = Logger.getLogger(CustomEventListenerProvider.class);
+    private static final Logger log = Logger.getLogger(ExternalDbSyncEventListenerProvider.class);
 
-    private static final String REALM_ID = "2c10d8dd-e1b9-44f7-bcf7-334c7ef2c676";
+    private static final String REALM_NAME = "Sabeel";
+    private static final String PINCODE_FORM_FIELD = "pincode";
+
 
 
     private final KeycloakSession session;
     private final RealmProvider model;
 
-    public CustomEventListenerProvider(KeycloakSession session) {
+    public ExternalDbSyncEventListenerProvider(KeycloakSession session) {
         this.session = session;
         this.model = session.realms();
     }
 
     @Override
     public void onEvent(Event event) {
+
+        if(!model.getRealmByName(REALM_NAME).equals(session.getContext().getRealm())) {
+            log.info("Not the right realm");
+            return;
+        }
 
         log.infof("New %s Event", event.getType());
         log.infof("onEvent-> %s", toString(event));
@@ -40,19 +47,29 @@ public class CustomEventListenerProvider
 
         if (EventType.REGISTER.equals(event.getType())) {
             log.info("User registered");
+            String pincode = session.getContext().getAuthenticationSession().getAuthNote(PINCODE_FORM_FIELD);
             UserModel user = getUser(event);
-            sendCreateData(user);
+            notifyUserRegistration(user,pincode);
         }
 
         if(EventType.DELETE_ACCOUNT.equals(event.getType())) {
             log.info("User account deleted");
-            sendDeleteData(event.getUserId());
+            notifyUserDeletion(event.getUserId());
         }
 
     }
 
+
+
     @Override
     public void onEvent(AdminEvent adminEvent, boolean b) {
+
+
+        if(!model.getRealmByName(REALM_NAME).equals(session.getContext().getRealm())) {
+            log.info("Not the right realm");
+            return;
+        }
+
         log.info("onEvent(AdminEvent)");
         log.infof("Resource path: %s", adminEvent.getResourcePath());
         log.infof("Resource type: %s", adminEvent.getResourceType());
@@ -62,13 +79,13 @@ public class CustomEventListenerProvider
 
         if (ResourceType.USER.equals(adminEvent.getResourceType())
                 && OperationType.CREATE.equals(adminEvent.getOperationType())) {
-            UserModel user = getUser(adminEvent);
-            sendCreateData(user);
+            UserModel user = findUserByAdminEvent(adminEvent);
+            notifyUserCreation(user);
         }
 
         if (ResourceType.USER.equals(adminEvent.getResourceType())
                 && OperationType.DELETE.equals(adminEvent.getOperationType())) {
-            sendDeleteData(adminEvent.getResourcePath().substring(6));
+            notifyUserDeletion(adminEvent.getResourcePath().substring(6));
         }
     }
 
@@ -78,13 +95,13 @@ public class CustomEventListenerProvider
        return  this.session.users().getUserById(realm, event.getUserId());
     }
 
-    private UserModel getUser(AdminEvent event) {
+    private UserModel findUserByAdminEvent(AdminEvent event) {
         RealmModel realm = this.model.getRealm(event.getRealmId());
        return  this.session.users().getUserById(realm, event.getResourcePath().substring(6));
     }
 
 
-    private void sendDeleteData(String userId) {
+    private void notifyUserDeletion(String userId) {
         String data = """
                 {
                     "id": "%s",
@@ -96,7 +113,7 @@ public class CustomEventListenerProvider
                 }
                 """.formatted(userId, null, null, null, null, Actions.DELETE);
         try {
-            Client.postService(data);
+            RestClient.sendRequest(data);
             log.info("A user has been deleted and post API");
         } catch (Exception e) {
             log.infof("Failed to call API: %s", e);
@@ -104,7 +121,28 @@ public class CustomEventListenerProvider
     }
 
 
-    private void sendCreateData(UserModel user) {
+    private void notifyUserRegistration(UserModel user, String pincode) {
+
+        String data = """
+                {
+                    "id": "%s",
+                    "email": "%s",
+                    "userName": "%s",
+                    "firstName": "%s",
+                    "lastName": "%s",
+                    "action": "%s",
+                    "pincode": "%s"
+                }
+                """.formatted(user.getId(), user.getEmail(), user.getUsername(), user.getFirstName(), user.getLastName(), Actions.CREATE, pincode);
+        try {
+            RestClient.sendRequest(data);
+            log.info("A new user has been registered and post API");
+        } catch (Exception e) {
+            log.infof("Failed to call API: %s", e);
+        }
+    }
+
+    private void notifyUserCreation(UserModel user) {
         String data = """
                 {
                     "id": "%s",
@@ -116,7 +154,7 @@ public class CustomEventListenerProvider
                 }
                 """.formatted(user.getId(), user.getEmail(), user.getUsername(), user.getFirstName(), user.getLastName(),Actions.CREATE);
         try {
-            Client.postService(data);
+            RestClient.sendRequest(data);
             log.info("A new user has been created and post API");
         } catch (Exception e) {
             log.infof("Failed to call API: %s", e);

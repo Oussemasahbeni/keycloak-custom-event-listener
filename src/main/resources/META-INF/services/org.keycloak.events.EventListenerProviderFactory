@@ -1,1 +1,1 @@
-com.keycloak.events.CustomEventListenerProviderFactory
+com.keycloak.events.ExternalDbSyncEventListenerProviderFactory
