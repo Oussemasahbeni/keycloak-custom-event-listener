@@ -23,7 +23,6 @@ public class ExternalDbSyncEventListenerProvider
     private static final String PINCODE_FORM_FIELD = "pincode";
 
 
-
     private final KeycloakSession session;
     private final RealmProvider model;
 
