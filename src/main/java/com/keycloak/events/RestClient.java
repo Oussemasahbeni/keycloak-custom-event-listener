@@ -13,16 +13,16 @@ import java.time.Duration;
 
 public class RestClient {
     private static final Logger log = Logger.getLogger(RestClient.class);
-    private static final String BACKEND_BASE_URL = "BACKEND_BASE_URL";
+    private static final String SAB_BACKEND_BASE_URL = "SAB_BACKEND_BASE_URL";
     private static final String SYNC_PATH = "/api/v1/kc/sync";
 
     public static void sendRequest(String data) throws IOException {
         try {
-            String apiUrl = System.getenv(BACKEND_BASE_URL);
-            log.infof("BACKEND_BASE_URL: %s", apiUrl);
+            String apiUrl = System.getenv(SAB_BACKEND_BASE_URL);
+            log.infof("SAB_BACKEND_BASE_URL: %s", apiUrl);
 
             if (apiUrl == null || apiUrl.isEmpty()) {
-                throw new IllegalArgumentException("Environment variable BACKEND_BASE_URL is not set or is empty.");
+                throw new IllegalArgumentException("Environment variable SAB_BACKEND_BASE_URL is not set or is empty.");
             }
 
             apiUrl = apiUrl + SYNC_PATH;

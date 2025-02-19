@@ -129,11 +129,22 @@ public class ExternalDbSyncEventListenerProvider
                     "userName": "%s",
                     "firstName": "%s",
                     "lastName": "%s",
-                    "action": "%s",
-                    "pincode": "%s"
+                    "pincode": "%s",
+                    "phoneNumber": "%s",
+                    "profilePicture": "%s",
+                    "action": "%s"
                 }
-                """.formatted(user.getId(), user.getEmail(), user.getUsername(), user.getFirstName(), user.getLastName(), Actions.CREATE, pincode);
+                """.formatted(
+                        user.getId(),
+                user.getEmail(),
+                user.getUsername(),
+                user.getFirstName(),
+                user.getLastName(), pincode,
+                user.getAttributes().get("phoneNumber").getFirst(),
+                user.getAttributes().get("profilePicture").getFirst(),
+                Actions.CREATE);
         try {
+            log.info("Sending request to API with data: " + data);
             RestClient.sendRequest(data);
             log.info("A new user has been registered and post API");
         } catch (Exception e) {
