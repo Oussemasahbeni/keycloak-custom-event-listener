@@ -6,12 +6,15 @@ import org.keycloak.events.EventListenerProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 
-public class ExternalDbSyncEventListenerProviderFactory
+public class UserSyncEventListenerProviderFactory
         implements EventListenerProviderFactory {
+
+  private static final String ID = "external-db-sync";
+
 
   @Override
   public EventListenerProvider create(KeycloakSession keycloakSession) {
-    return new ExternalDbSyncEventListenerProvider(keycloakSession);
+    return new UserSyncEventListenerProvider(keycloakSession);
   }
 
   @Override
@@ -31,6 +34,6 @@ public class ExternalDbSyncEventListenerProviderFactory
 
   @Override
   public String getId() {
-    return "external-db-sync";
+    return ID;
   }
 }

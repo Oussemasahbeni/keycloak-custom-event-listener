@@ -5,19 +5,19 @@ import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
-import org.keycloak.events.admin.OperationType;
-import org.keycloak.events.admin.ResourceType;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RealmProvider;
 import org.keycloak.models.UserModel;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.StringJoiner;
 
-public class ExternalDbSyncEventListenerProvider
+public class UserSyncEventListenerProvider
         implements EventListenerProvider {
 
-    private static final Logger log = Logger.getLogger(ExternalDbSyncEventListenerProvider.class);
+    private static final Logger log = Logger.getLogger(UserSyncEventListenerProvider.class);
 
     private static final String REALM_NAME = "Sabeel";
     private static final String PINCODE_FORM_FIELD = "pincode";
@@ -26,7 +26,7 @@ public class ExternalDbSyncEventListenerProvider
     private final KeycloakSession session;
     private final RealmProvider model;
 
-    public ExternalDbSyncEventListenerProvider(KeycloakSession session) {
+    public UserSyncEventListenerProvider(KeycloakSession session) {
         this.session = session;
         this.model = session.realms();
     }
@@ -55,37 +55,34 @@ public class ExternalDbSyncEventListenerProvider
             log.info("User account deleted");
             notifyUserDeletion(event.getUserId());
         }
-
     }
-
-
 
     @Override
     public void onEvent(AdminEvent adminEvent, boolean b) {
+//
+//
+//        if(!model.getRealmByName(REALM_NAME).equals(session.getContext().getRealm())) {
+//            log.info("Not the right realm");
+//            return;
+//        }
+//
+//        log.info("onEvent(AdminEvent)");
+//        log.infof("Resource path: %s", adminEvent.getResourcePath());
+//        log.infof("Resource type: %s", adminEvent.getResourceType());
+//        log.infof("Operation type: %s", adminEvent.getOperationType());
+//        log.infof("AdminEvent.toString(): %s", toString(adminEvent));
+//
+//
+//        if (ResourceType.USER.equals(adminEvent.getResourceType())
+//                && OperationType.CREATE.equals(adminEvent.getOperationType())) {
+//            UserModel user = findUserByAdminEvent(adminEvent);
+//            notifyUserCreation(user);
+//        }
 
-
-        if(!model.getRealmByName(REALM_NAME).equals(session.getContext().getRealm())) {
-            log.info("Not the right realm");
-            return;
-        }
-
-        log.info("onEvent(AdminEvent)");
-        log.infof("Resource path: %s", adminEvent.getResourcePath());
-        log.infof("Resource type: %s", adminEvent.getResourceType());
-        log.infof("Operation type: %s", adminEvent.getOperationType());
-        log.infof("AdminEvent.toString(): %s", toString(adminEvent));
-
-
-        if (ResourceType.USER.equals(adminEvent.getResourceType())
-                && OperationType.CREATE.equals(adminEvent.getOperationType())) {
-            UserModel user = findUserByAdminEvent(adminEvent);
-            notifyUserCreation(user);
-        }
-
-        if (ResourceType.USER.equals(adminEvent.getResourceType())
-                && OperationType.DELETE.equals(adminEvent.getOperationType())) {
-            notifyUserDeletion(adminEvent.getResourcePath().substring(6));
-        }
+//        if (ResourceType.USER.equals(adminEvent.getResourceType())
+//                && OperationType.DELETE.equals(adminEvent.getOperationType())) {
+//            notifyUserDeletion(adminEvent.getResourcePath().substring(6));
+//        }
     }
 
 
@@ -100,18 +97,21 @@ public class ExternalDbSyncEventListenerProvider
     }
 
 
+
+
     private void notifyUserDeletion(String userId) {
         String data = """
                 {
                     "id": "%s",
                     "email": "%s",
-                    "userName": "%s",
+                    "username": "%s",
                     "firstName": "%s",
                     "lastName": "%s",
                     "action": "%s"
                 }
-                """.formatted(userId, null, null, null, null, Actions.DELETE);
+                """.formatted(userId, null, null, null, null, Actions.DELETE_ACCOUNT);
         try {
+            log.info("Sending request to API with data: " + data);
             RestClient.sendRequest(data);
             log.info("A user has been deleted and post API");
         } catch (Exception e) {
@@ -122,16 +122,23 @@ public class ExternalDbSyncEventListenerProvider
 
     private void notifyUserRegistration(UserModel user, String pincode) {
 
+        user.getGroupsStream().forEach(groupModel -> log.infof("Group: %s", groupModel.getName()));
+        user.getRealmRoleMappingsStream().forEach(roleModel -> log.infof("Role: %s", roleModel.getName()));
+        String profilePicture = Optional.ofNullable(user.getAttributes().get("profilePicture"))
+                .map(List::getFirst)
+                .orElse(null);
         String data = """
                 {
                     "id": "%s",
                     "email": "%s",
-                    "userName": "%s",
+                    "username": "%s",
                     "firstName": "%s",
                     "lastName": "%s",
                     "pincode": "%s",
                     "phoneNumber": "%s",
                     "profilePicture": "%s",
+                    "enabled": %s,
+                    "emailVerified": %s,
                     "action": "%s"
                 }
                 """.formatted(
@@ -141,18 +148,22 @@ public class ExternalDbSyncEventListenerProvider
                 user.getFirstName(),
                 user.getLastName(), pincode,
                 user.getAttributes().get("phoneNumber").getFirst(),
-                user.getAttributes().get("profilePicture").getFirst(),
-                Actions.CREATE);
+                profilePicture,
+                user.isEnabled(),
+                user.isEmailVerified(),
+                Actions.REGISTER);
         try {
             log.info("Sending request to API with data: " + data);
             RestClient.sendRequest(data);
-            log.info("A new user has been registered and post API");
+            log.info("A new user has been registered");
         } catch (Exception e) {
             log.infof("Failed to call API: %s", e);
         }
     }
 
     private void notifyUserCreation(UserModel user) {
+        user.getGroupsStream().forEach(groupModel -> log.infof("Group: %s", groupModel.getName()));
+        user.getRealmRoleMappingsStream().forEach(roleModel -> log.infof("Role: %s", roleModel.getName()));
         String data = """
                 {
                     "id": "%s",
@@ -160,12 +171,25 @@ public class ExternalDbSyncEventListenerProvider
                     "userName": "%s",
                     "firstName": "%s",
                     "lastName": "%s",
+                    "phoneNumber": "%s",
+                    "enabled": %s,
+                    "emailVerified": %s,
                     "action": "%s"
                 }
-                """.formatted(user.getId(), user.getEmail(), user.getUsername(), user.getFirstName(), user.getLastName(),Actions.CREATE);
+                """.formatted(
+                        user.getId(),
+                user.getEmail(),
+                user.getUsername(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getAttributes().get("phoneNumber").getFirst(),
+                user.isEnabled(),
+                user.isEmailVerified(),
+                Actions.CREATE);
         try {
+            log.info("Sending request to API with data: " + data);
             RestClient.sendRequest(data);
-            log.info("A new user has been created and post API");
+            log.info("A new user has been created");
         } catch (Exception e) {
             log.infof("Failed to call API: %s", e);
         }
@@ -174,6 +198,7 @@ public class ExternalDbSyncEventListenerProvider
     @Override
     public void close() {
     }
+
 
     private String toString(Event event) {
         StringJoiner joiner = new StringJoiner(", ");

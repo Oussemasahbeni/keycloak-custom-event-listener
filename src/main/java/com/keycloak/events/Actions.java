@@ -2,6 +2,7 @@ package com.keycloak.events;
 
 public enum Actions {
   CREATE,
+  REGISTER,
   UPDATE,
-  DELETE
+  DELETE_ACCOUNT,
 }
