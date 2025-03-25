@@ -1,5 +1,6 @@
 package com.keycloak.events;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.Logger;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
@@ -21,6 +22,8 @@ public class UserSyncEventListenerProvider
 
     private static final String REALM_NAME = "Sabeel";
     private static final String PINCODE_FORM_FIELD = "pincode";
+    private static final ObjectMapper mapper = new ObjectMapper();
+
 
 
     private final KeycloakSession session;
@@ -53,7 +56,7 @@ public class UserSyncEventListenerProvider
 
         if(EventType.DELETE_ACCOUNT.equals(event.getType())) {
             log.info("User account deleted");
-            notifyUserDeletion(event.getUserId());
+            notifyUserSuppression(event.getUserId());
         }
     }
 
@@ -88,30 +91,24 @@ public class UserSyncEventListenerProvider
 
     private UserModel getUser(Event event) {
         RealmModel realm = this.model.getRealm(event.getRealmId());
-       return  this.session.users().getUserById(realm, event.getUserId());
+        return  this.session.users().getUserById(realm, event.getUserId());
     }
 
     private UserModel findUserByAdminEvent(AdminEvent event) {
         RealmModel realm = this.model.getRealm(event.getRealmId());
-       return  this.session.users().getUserById(realm, event.getResourcePath().substring(6));
+        return  this.session.users().getUserById(realm, event.getResourcePath().substring(6));
     }
 
 
 
 
-    private void notifyUserDeletion(String userId) {
-        String data = """
-                {
-                    "id": "%s",
-                    "email": "%s",
-                    "username": "%s",
-                    "firstName": "%s",
-                    "lastName": "%s",
-                    "action": "%s"
-                }
-                """.formatted(userId, null, null, null, null, Actions.DELETE_ACCOUNT);
+    private void notifyUserSuppression(String userId) {
+        UserPayload payload = new UserPayload();
+        payload.setId(userId);
+        payload.setAction(Actions.DELETE_ACCOUNT.toString());
         try {
-            log.info("Sending request to API with data: " + data);
+            log.info("Sending request to API with data: " + payload);
+            String data = mapper.writeValueAsString(payload);
             RestClient.sendRequest(data);
             log.info("A user has been deleted and post API");
         } catch (Exception e) {
@@ -127,33 +124,22 @@ public class UserSyncEventListenerProvider
         String profilePicture = Optional.ofNullable(user.getAttributes().get("profilePicture"))
                 .map(List::getFirst)
                 .orElse(null);
-        String data = """
-                {
-                    "id": "%s",
-                    "email": "%s",
-                    "username": "%s",
-                    "firstName": "%s",
-                    "lastName": "%s",
-                    "pincode": "%s",
-                    "phoneNumber": "%s",
-                    "profilePicture": "%s",
-                    "enabled": %s,
-                    "emailVerified": %s,
-                    "action": "%s"
-                }
-                """.formatted(
-                        user.getId(),
-                user.getEmail(),
-                user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(), pincode,
-                user.getAttributes().get("phoneNumber").getFirst(),
-                profilePicture,
-                user.isEnabled(),
-                user.isEmailVerified(),
-                Actions.REGISTER);
+        UserPayload payload = new UserPayload();
+        payload.setId(user.getId());
+        payload.setEmail(user.getEmail());
+        payload.setUsername(user.getUsername());
+        payload.setFirstName(user.getFirstName());
+        payload.setLastName(user.getLastName());
+        payload.setPincode(pincode);
+        payload.setPhoneNumber(user.getAttributes().get("phoneNumber").getFirst());
+        payload.setProfilePicture(profilePicture);
+        payload.setEnabled(user.isEnabled());
+        payload.setEmailVerified(user.isEmailVerified());
+        payload.setAction(Actions.REGISTER.toString());
         try {
-            log.info("Sending request to API with data: " + data);
+            String data = mapper.writeValueAsString(payload);
+
+            log.info("Sending request to API with data: " + payload);
             RestClient.sendRequest(data);
             log.info("A new user has been registered");
         } catch (Exception e) {
@@ -177,7 +163,7 @@ public class UserSyncEventListenerProvider
                     "action": "%s"
                 }
                 """.formatted(
-                        user.getId(),
+                user.getId(),
                 user.getEmail(),
                 user.getUsername(),
                 user.getFirstName(),

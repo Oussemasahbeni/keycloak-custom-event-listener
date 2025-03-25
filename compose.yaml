@@ -1,53 +1,40 @@
 services:
   # PostgreSQL Database Service
   postgres:
-    image: postgres:17.0            # Using latest PostgreSQL image
-    container_name: postgres        # Custom container name for easy identification
+    image: postgres:17-alpine
     environment:
-      # Database configuration
-      POSTGRES_DB: ${POSTGRES_DB}          # Database name for Keycloak
-      POSTGRES_USER: ${POSTGRES_USER}      # Database superuser username
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Database superuser password
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_DB: kc_event_test
     volumes:
-      # Persistent storage for database files
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - keycloak_network             # Attach to internal network
-  # Keycloak Authentication Service
+      - keycloak_network
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1.1 # Official Keycloak image
-    container_name: keycloak         # Custom container name
+    image: quay.io/keycloak/keycloak:26.1.3
+    container_name: keycloak
     environment:
-      # Database connection settings
-      KC_DB: ${KC_DB}                     # Database type
-      KC_DB_URL: ${KC_DB_URL}             # JDBC connection URL
-      KC_DB_USERNAME: ${KC_DB_USERNAME}    # Must match POSTGRES_USER
-      KC_DB_PASSWORD: ${KC_DB_PASSWORD}    # Must match POSTGRES_PASSWORD
-      # Admin console credentials
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}    # Initial admin username
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD} # Initial admin password
-      WEBHOOK_URL: ${WEBHOOK_URL}
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KC_METRICS_ENABLED: true
+      SAB_BACKEND_BASE_URL: "http://host.docker.internal:8081"
     volumes:
-      # Mount directory for custom extensions (email domain validation)
       - ./providers:/opt/keycloak/providers
     ports:
-      # Expose Keycloak on port 8080
-      - "8080:8080"
-    depends_on:
-      # Ensure PostgreSQL starts first
-      - postgres
+      - "8085:8080"
     command:
-      - start-dev                   # Run in development mode
+      - start-dev
     networks:
-      - keycloak_network           # Attach to internal network
+      - keycloak_network
 
 # Persistent volumes configuration
 volumes:
-  postgres_data:                   # Named volume for PostgreSQL data
-  pgadmin:                         # Named volume for pgAdmin data
-  # Uses default driver and configuration
-
+  postgres_data:
+  pgadmin:
 # Network configuration
 networks:
-  keycloak_network:               # Internal network for service communication
-    driver: bridge                # Using bridge network driver
+  keycloak_network:
+    driver: bridge
